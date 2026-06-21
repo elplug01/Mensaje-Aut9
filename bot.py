@@ -62,7 +62,7 @@ async def send_hourly_post(context):
 async def setup_jobs(app):
     app.job_queue.run_repeating(
         send_hourly_post,
-        interval=3600,
+        interval=300,
         first=10
     )
 
