@@ -1,7 +1,7 @@
 import os
 import json
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import Application, ContextTypes
+import asyncio
+from telegram import Bot, InlineKeyboardButton, InlineKeyboardMarkup
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 CHANNEL_ID = int(os.getenv("CHANNEL_ID"))
@@ -29,50 +29,41 @@ def save_last_message_id(message_id):
         json.dump({"last_message_id": message_id}, f)
 
 
-async def post_message(context: ContextTypes.DEFAULT_TYPE):
-    old_message_id = load_last_message_id()
+async def main():
+    bot = Bot(token=BOT_TOKEN)
 
-    if old_message_id:
-        try:
-            await context.bot.delete_message(
-                chat_id=CHANNEL_ID,
-                message_id=old_message_id
-            )
-            print(f"Deleted old message: {old_message_id}")
-        except Exception as e:
-            print(f"Could not delete old message: {e}")
+    while True:
+        old_message_id = load_last_message_id()
 
-    keyboard = InlineKeyboardMarkup([
-        [
-            InlineKeyboardButton(BUTTON_1_TEXT, url=BUTTON_1_URL),
-            InlineKeyboardButton(BUTTON_2_TEXT, url=BUTTON_2_URL),
-        ]
-    ])
+        if old_message_id:
+            try:
+                await bot.delete_message(
+                    chat_id=CHANNEL_ID,
+                    message_id=old_message_id
+                )
+                print(f"Deleted old message: {old_message_id}")
+            except Exception as e:
+                print(f"Could not delete old message: {e}")
 
-    msg = await context.bot.send_animation(
-        chat_id=CHANNEL_ID,
-        animation=MEDIA_URL,
-        caption=MESSAGE_TEXT,
-        reply_markup=keyboard
-    )
+        keyboard = InlineKeyboardMarkup([
+            [
+                InlineKeyboardButton(BUTTON_1_TEXT, url=BUTTON_1_URL),
+                InlineKeyboardButton(BUTTON_2_TEXT, url=BUTTON_2_URL),
+            ]
+        ])
 
-    save_last_message_id(msg.message_id)
-    print(f"Sent new message: {msg.message_id}")
+        msg = await bot.send_animation(
+            chat_id=CHANNEL_ID,
+            animation=MEDIA_URL,
+            caption=MESSAGE_TEXT,
+            reply_markup=keyboard
+        )
 
+        save_last_message_id(msg.message_id)
+        print(f"Sent new message: {msg.message_id}")
 
-def main():
-    app = Application.builder().token(BOT_TOKEN).build()
-
-    app.job_queue.run_repeating(
-        post_message,
-        interval=300,
-        first=5,
-        name="auto_post"
-    )
-
-    print("Bot started. Posting every 5 minutes.")
-    app.run_polling()
+        await asyncio.sleep(300)
 
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())
